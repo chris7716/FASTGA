@@ -27,7 +27,7 @@
 #undef  DEBUG_THREADS
 #undef  DEBUG
 
-#define TSPACE   100
+#define TSPACE   1000
 #define VERSION "0.1"
 
 static char *Usage[] = 
