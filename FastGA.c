@@ -43,7 +43,7 @@
 
 #define   MAX_INT64    0x7fffffffffffffffll
 
-#define   TSPACE       100
+#define   TSPACE       1000
 
 static int PTR_SIZE = sizeof(void *);
 static int OVL_SIZE = sizeof(Overlap);
