@@ -464,7 +464,7 @@ void *gen_paf(void *args)
           { int x;
 
             stoa("\tdv:f:0.",out);
-            x = 10000 + (10000ll*((path->aepos-path->abpos)-iid))/(path->aepos-path->abpos);
+            x = (path->aepos > path->abpos) ? 10000 + (int)((10000ll*((path->aepos-path->abpos)-iid))/(path->aepos-path->abpos)) : 10000;  // patch: avoid /0 on zero-length end pieces
             fputc('0'+((x/1000)%10),out);
             fputc('0'+((x/100)%10),out);
             fputc('0'+((x/10)%10),out);
@@ -610,7 +610,7 @@ void *gen_paf(void *args)
           { int x;
 
             stoa("\tdv:f:0.",out);
-            x = 10000 + (10000ll*((path->aepos-path->abpos)-iid))/(path->aepos-path->abpos);
+            x = (path->aepos > path->abpos) ? 10000 + (int)((10000ll*((path->aepos-path->abpos)-iid))/(path->aepos-path->abpos)) : 10000;  // patch: avoid /0 on zero-length end pieces
             fputc('0'+((x/1000)%10),out);
             fputc('0'+((x/100)%10),out);
             fputc('0'+((x/10)%10),out);
