@@ -653,6 +653,16 @@ void *gen_1aln(void *args)
       fflush(stdout);
 #endif
 
+      if (*C->cptr == '\0')
+        {   // pure-match alignment: cigarPrefix consumed the whole CIGAR. Record it with its
+            // original full coordinates and a single (0,0) tracepoint. ALNtoPAF short-cuts a (0,0) trace to "<aepos-abpos>=".
+          ovl->path.diffs = 0;
+          tps->trace[0] = 0;
+          tps->trace[1] = 0;
+          Write_Aln_Overlap(of,ovl);
+          Write_Aln_Trace(of,tps->trace,2,trace64,0);
+        }
+      else
       while (1)
         { ovl->path.abpos = C->apos;
           ovl->path.bbpos = C->bpos;

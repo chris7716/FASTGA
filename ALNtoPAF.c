@@ -275,9 +275,13 @@ void *gen_paf(void *args)
           else
             aln->bseq = bact - bmin; 
 
-          Compute_Trace_PTS(aln,work,TSPACE,GREEDIEST,1,-1);
-
-          Gap_Improver(aln,work);
+          if (path->diffs == 0)        // pure-match alignment (single (0,0) tracepoint)
+            path->tlen = 0;            // skip realignment; the CIGAR loop emits one match block
+          else
+            { Compute_Trace_PTS(aln,work,TSPACE,GREEDIEST,1,-1);
+              if (path->tlen > 0)      // empty computed trace -> nothing to improve
+                Gap_Improver(aln,work);
+            }
 
           cig->n = 0;
           del = 0;
