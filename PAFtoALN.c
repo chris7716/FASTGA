@@ -514,6 +514,7 @@ void *gen_1aln(void *args)
   int    adel, bdel;
   int    bpos, epos;
   int    aend, bend;
+  int    aectg, bectg, bfctg;   // scaffold contig bounds (patch: don't advance past them)
   int    i;
 
   input = fopen(iname,"r");
@@ -575,6 +576,7 @@ void *gen_1aln(void *args)
       ovl->aread = i;
       ovl->path.abpos = bpos - CONTIG1[i].sbeg;
       ovl->path.aepos = epos - CONTIG1[i].sbeg;
+      aectg = SCAFF1[index].ectg;
 
       index = Hash_Lookup(BHASH, fptrs[5]);
       blen   = strtol(fptrs[6], &eptr, 10);
@@ -604,6 +606,7 @@ void *gen_1aln(void *args)
           ovl->path.bepos = epos - CONTIG2[i].sbeg;
           ovl->flags = 0;
         }
+      bectg = SCAFF2[index].ectg; bfctg = SCAFF2[index].fctg;
 
       for (i = 11; i < nfields; i++)
         if (strncmp(fptrs[i],"cg:Z:",5) == 0)
@@ -687,13 +690,13 @@ void *gen_1aln(void *args)
               C->cptr += 1;
               C->len   = 0;
             }
-          while (C->apos >= aend)
+          while (C->apos >= aend && ovl->aread+1 < aectg)
             { C->apos += CONTIG1[ovl->aread].sbeg;
               ovl->aread += 1;
               C->apos -= CONTIG1[ovl->aread].sbeg;
               aend = CONTIG1[ovl->aread].clen;
             }
-          while (C->bpos >= bend)
+          while (C->bpos >= bend && (comp ? ovl->bread-1 >= bfctg : ovl->bread+1 < bectg))
             { if (comp)
                 { C->bpos -= CONTIG2[ovl->bread].sbeg+CONTIG2[ovl->bread].clen;
                   ovl->bread -= 1;
@@ -707,6 +710,9 @@ void *gen_1aln(void *args)
                   bend = CONTIG1[ovl->bread].clen;
                 }
             }
+
+          if (C->apos >= aend || C->bpos >= bend)   // terminal end-gap at scaffold edge: stop
+            break;
 
           adel -= C->apos;
           bdel -= C->bpos;
