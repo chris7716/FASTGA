@@ -165,7 +165,7 @@ int Read_Aln_Overlap(OneFile *of, Overlap *ovl)
   return (0);
 }
 
-int Read_Aln_Trace(OneFile *of, uint8 *trace, int *period)
+int Read_Aln_Trace(OneFile *of, int16 *trace, int *period)
 { int64 *trace64;
   int    tlen;
   int    j, x;
@@ -285,7 +285,7 @@ void Write_Aln_Overlap (OneFile *of, Overlap *ovl)
   oneWriteLine (of,'D',0,0);
 }
 
-void Write_Aln_Trace (OneFile *of, uint8 *trace, int tlen, int64 *trace64, int period)
+void Write_Aln_Trace (OneFile *of, int16 *trace, int tlen, int64 *trace64, int period)
 { int j, x;
 
   j = 0;
