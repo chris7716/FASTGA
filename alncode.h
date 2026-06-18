@@ -25,7 +25,7 @@ OneFile *open_Aln_Read (char *filename, int nThreads,
 // next three routines read the records from the file
 
 int  Read_Aln_Overlap(OneFile *of, Overlap *ovl);
-int  Read_Aln_Trace  (OneFile *of, uint8 *trace, int *period);
+int  Read_Aln_Trace  (OneFile *of, int16 *trace, int *period);
 int  Skip_Aln_Trace  (OneFile *of);
 int  Copy_Aln_Trace  (OneFile *in, OneFile *out);
 
@@ -36,6 +36,6 @@ OneFile *open_Aln_Write (char *filename, int nThreads,
 			 char *db1_name, char *db2_name, char *cpath);
 
 void Write_Aln_Overlap(OneFile *of, Overlap *ovl);
-void Write_Aln_Trace  (OneFile *of, uint8 *trace, int tlen, int64 *trace64, int period);
+void Write_Aln_Trace  (OneFile *of, int16 *trace, int tlen, int64 *trace64, int period);
 
 // end of file
