@@ -28,10 +28,11 @@
 #undef  DEBUG
 
 static int TSPACE = 100;
+static int NODIFF = 0;
 #define VERSION "0.1"
 
 static char *Usage[] =
-            { "[-T<int(8)>] [-S<int(100)>] <alignments:path>[.paf]",
+            { "[-T<int(8)>] [-S<int(100)>] [-N] <alignments:path>[.paf]",
               " <source1:path>[.1gdb|<fa_extn>|<1_extn>] [<source2:path>[.1gdb|<fa_extn>|<1_extn>]]"
             };
 
@@ -669,7 +670,7 @@ void *gen_1aln(void *args)
           ovl->path.aepos = C->apos;
           ovl->path.diffs = tps->diff;
           Write_Aln_Overlap(of,ovl);
-          Write_Aln_Trace(of,tps->trace,tps->tlen,trace64,0);
+          Write_Aln_Trace(of,tps->trace,tps->tlen,trace64,0,NODIFF);
 
           if (*C->cptr == '\0')
             break;
@@ -778,6 +779,9 @@ int main(int argc, char *argv[])
           case 'S':
             ARG_POSITIVE(TSPACE,"Trace point spacing")
             break;
+          case 'N':
+            NODIFF = 1;
+            break;
         }
       else
         argv[j++] = argv[i];
@@ -792,6 +796,7 @@ int main(int argc, char *argv[])
         fprintf(stderr,"\n");
         fprintf(stderr,"      -T: Number of threads to use.\n");
         fprintf(stderr,"      -S: Trace point spacing (default 100).\n");
+        fprintf(stderr,"      -N: No-diff mode: omit per-window diff counts (X line).\n");
         exit (1);
       }
 

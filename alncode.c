@@ -165,7 +165,7 @@ int Read_Aln_Overlap(OneFile *of, Overlap *ovl)
   return (0);
 }
 
-int Read_Aln_Trace(OneFile *of, int16 *trace, int *period)
+int Read_Aln_Trace(OneFile *of, int16 *trace, int *period, int nodiff_bound)
 { int64 *trace64;
   int    tlen;
   int    j, x;
@@ -182,27 +182,36 @@ int Read_Aln_Trace(OneFile *of, int16 *trace, int *period)
     trace[x] = trace64[j++];
 
   oneReadLine(of);
-  if (of->lineType != 'X')
-    { EPRINTF("No X-line following a T-line in 1aln file");
-      EXIT(1);
+  if (of->lineType == 'X')
+    { if (2*oneLen(of) != tlen)
+        { EPRINTF("X-line and T-lines should have the same length");
+          EXIT(1);
+        }
+      trace64 = oneIntList(of);
+      j = 0;
+      for (x = 0; x < tlen; x += 2)
+        trace[x] = trace64[j++];
+      if (period != NULL)
+        *period = 0;
+      while (oneReadLine(of))
+        if (of->lineType == 'A')
+          break;
+        else if (of->lineType == 'U' && period != NULL)
+          *period = oneInt(of,0);
     }
-  if (2*oneLen(of) != tlen)
-    { EPRINTF("X-line and T-lines should have the same length");
-      EXIT(1);
+  else
+    { for (x = 0; x < tlen; x += 2)   // no-diff: bound diff so DP can succeed
+        trace[x] = (int16) nodiff_bound;
+      if (period != NULL)
+        *period = 0;
+      if (of->lineType != 'A')
+        while (oneReadLine(of))
+          { if (of->lineType == 'A')
+              break;
+            else if (of->lineType == 'U' && period != NULL)
+              *period = oneInt(of,0);
+          }
     }
-
-  trace64 = oneIntList(of);
-  j = 0;
-  for (x = 0; x < tlen; x += 2)
-    trace[x] = trace64[j++];
-
-  if (period != NULL)
-    *period = 0;
-  while (oneReadLine(of))       // move to start of next alignment
-    if (of->lineType == 'A')
-      break;
-    else if (of->lineType == 'U' && period != NULL)
-      *period = oneInt(of,0);
 
   return (tlen);
 }
@@ -218,18 +227,19 @@ int Skip_Aln_Trace(OneFile *of)
   tlen = oneLen(of);
 
   oneReadLine(of);
-  if (of->lineType != 'X')
-    { EPRINTF("No X-line following a T-line in 1aln file");
-      EXIT(1);
+  if (of->lineType == 'X')
+    { if (oneLen(of) != tlen)
+        { EPRINTF("X-line and T-lines should have the same length");
+          EXIT(1);
+        }
+      while (oneReadLine(of))
+        if (of->lineType == 'A')
+          break;
     }
-  if (oneLen(of) != tlen)
-    { EPRINTF("X-line and T-lines should have the same length");
-      EXIT(1);
-    }
-
-  while (oneReadLine(of))       // move to start of next alignment
-    if (of->lineType == 'A')
-      break;
+  else if (of->lineType != 'A')
+    while (oneReadLine(of))
+      if (of->lineType == 'A')
+        break;
 
   return (0);
 }
@@ -285,7 +295,7 @@ void Write_Aln_Overlap (OneFile *of, Overlap *ovl)
   oneWriteLine (of,'D',0,0);
 }
 
-void Write_Aln_Trace (OneFile *of, int16 *trace, int tlen, int64 *trace64, int period)
+void Write_Aln_Trace (OneFile *of, int16 *trace, int tlen, int64 *trace64, int period, int nodiff)
 { int j, x;
 
   j = 0;
@@ -293,10 +303,12 @@ void Write_Aln_Trace (OneFile *of, int16 *trace, int tlen, int64 *trace64, int p
     trace64[j++] = trace[x];
   oneWriteLine (of,'T',j,trace64);
 
-  j = 0;
-  for (x = 0; x < tlen; x += 2)
-    trace64[j++] = trace[x];
-  oneWriteLine(of,'X',j,trace64);
+  if (!nodiff)
+    { j = 0;
+      for (x = 0; x < tlen; x += 2)
+        trace64[j++] = trace[x];
+      oneWriteLine(of,'X',j,trace64);
+    }
 
   if (period != 0)
     { oneInt(of,0) = period;
@@ -316,23 +328,30 @@ int Copy_Aln_Trace(OneFile *in, OneFile *out)
   oneWriteLine(out,'T',tlen,oneIntList(in));
 
   oneReadLine(in);
-  if (in->lineType != 'X')
-    { EPRINTF("No X-line following a T-line in 1aln file");
-      EXIT(1);
+  if (in->lineType == 'X')
+    { if (oneLen(in) != tlen)
+        { EPRINTF("X-line and T-lines should have the same length");
+          EXIT(1);
+        }
+      oneWriteLine(out,'X',tlen,oneIntList(in));
+      while (oneReadLine(in))
+        if (in->lineType == 'U')
+          { oneInt(out,0) = oneInt(in,0);
+            oneWriteLine(out,'U',0,NULL);
+          }
+        else if (in->lineType == 'A')
+          break;
     }
-  if (oneLen(in) != tlen)
-    { EPRINTF("X-line and T-lines should have the same length");
-      EXIT(1);
+  else
+    { while (in->lineType != 'A')
+        { if (in->lineType == 'U')
+            { oneInt(out,0) = oneInt(in,0);
+              oneWriteLine(out,'U',0,NULL);
+            }
+          if (!oneReadLine(in))
+            break;
+        }
     }
-  oneWriteLine(out,'X',tlen,oneIntList(in));
-
-  while (oneReadLine(in))       // move to start of next alignment
-    if (in->lineType == 'U')
-      { oneInt(out,0) = oneInt(in,0);
-        oneWriteLine(out,'U',0,NULL);
-      }
-    else if (in->lineType == 'A')
-      break;
 
   return (0);
 }
