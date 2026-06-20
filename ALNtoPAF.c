@@ -113,7 +113,7 @@ void *gen_paf(void *args)
   Alignment _aln, *aln = &_aln;
   CigarList _cig, *cig = &_cig;
 
-  int16        *trace;
+  uint16       *trace;
   int           tmax;
   GDB_CONTIG   *contigs1, *contigs2;
   GDB_SCAFFOLD *scaff1, *scaff2;
@@ -155,7 +155,7 @@ void *gen_paf(void *args)
   aln->aseq = aseq;
 
   tmax  = in->info['T']->given.max;
-  trace = (int16 *) Malloc(2*sizeof(int16)*tmax,"Allocating trace vector");
+  trace = (uint16 *) Malloc(2*sizeof(uint16)*tmax,"Allocating trace vector");
   if (trace == NULL)
     exit (1);
   path->trace = (void *) trace;
@@ -170,7 +170,7 @@ void *gen_paf(void *args)
 
   for (alast = -1; beg < end; beg++)
     { Read_Aln_Overlap(in,ovl);
-      path->tlen  = Read_Aln_Trace(in,trace,NULL,TSPACE);
+      path->tlen  = Read_Aln_Trace(in,(uint8 *) trace,NULL,TSPACE);
       path->trace = trace;
 
       acontig = ovl->aread;
@@ -252,6 +252,8 @@ void *gen_paf(void *args)
         { int  bmin, bmax;
           int  del;
           char *bact;
+
+          Decompress_TraceTo16(ovl);
 
           if (acontig != alast)
             Get_Contig(gdb1,acontig,NUMERIC,aseq);

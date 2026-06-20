@@ -165,7 +165,7 @@ int Read_Aln_Overlap(OneFile *of, Overlap *ovl)
   return (0);
 }
 
-int Read_Aln_Trace(OneFile *of, int16 *trace, int *period, int nodiff_bound)
+int Read_Aln_Trace(OneFile *of, uint8 *trace, int *period, int nodiff_bound)
 { int64 *trace64;
   int    tlen;
   int    j, x;
@@ -201,7 +201,7 @@ int Read_Aln_Trace(OneFile *of, int16 *trace, int *period, int nodiff_bound)
     }
   else
     { for (x = 0; x < tlen; x += 2)   // no-diff: bound diff so DP can succeed
-        trace[x] = (int16) nodiff_bound;
+        trace[x] = (uint8) nodiff_bound;
       if (period != NULL)
         *period = 0;
       if (of->lineType != 'A')
@@ -295,7 +295,7 @@ void Write_Aln_Overlap (OneFile *of, Overlap *ovl)
   oneWriteLine (of,'D',0,0);
 }
 
-void Write_Aln_Trace (OneFile *of, int16 *trace, int tlen, int64 *trace64, int period, int nodiff)
+void Write_Aln_Trace (OneFile *of, uint8 *trace, int tlen, int64 *trace64, int period, int nodiff)
 { int j, x;
 
   j = 0;

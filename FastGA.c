@@ -4098,7 +4098,7 @@ static int la_merge(TP *parm)
         ovl_reload(src,bsize);
 
       Write_Aln_Overlap (of, ov);
-      Write_Aln_Trace (of, src->ptr, tsize, trace64, 0);
+      Write_Aln_Trace (of, src->ptr, tsize, trace64, 0, 0);
 
       src->ptr += tsize;
       if (src->ptr >= src->top)

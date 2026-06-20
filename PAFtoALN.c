@@ -27,12 +27,12 @@
 #undef  DEBUG_THREADS
 #undef  DEBUG
 
-static int TSPACE = 100;
+#define TSPACE   100
 static int NODIFF = 0;
 #define VERSION "0.1"
 
 static char *Usage[] =
-            { "[-T<int(8)>] [-S<int(100)>] [-N] <alignments:path>[.paf]",
+            { "[-T<int(8)>] [-N] <alignments:path>[.paf]",
               " <source1:path>[.1gdb|<fa_extn>|<1_extn>] [<source2:path>[.1gdb|<fa_extn>|<1_extn>]]"
             };
 
@@ -201,7 +201,7 @@ found:
 typedef struct
   { int    diff;
     int    tlen;   // length of current result
-    int16 *trace;
+    uint8 *trace;
     int    mlen;   // current length of trace array (for realloc purposes)
   } TP_Bundle;     //   set this to 0 for the first call, and free trace after the last call
 
@@ -218,7 +218,7 @@ static char *cigar2tp(Cigar_Position *C, int64 aend, int64 bend,
 { int64 apos, anext;
   int64 bpos, blast;
   int64 diff, dlast;
-  int16 *trace;
+  uint8 *trace;
   int   x, len, inc, slen;
   char *c;
 
@@ -288,7 +288,7 @@ static char *cigar2tp(Cigar_Position *C, int64 aend, int64 bend,
           bpos += len;
           break;
         case 2:
-          if ((bpos-blast) + len + (anext-apos) > 32767)
+          if ((bpos-blast) + len + (anext-apos) > 200)
             { slen += len;
               break;
             }
@@ -296,7 +296,7 @@ static char *cigar2tp(Cigar_Position *C, int64 aend, int64 bend,
           diff += len;
           break;
         case 1:
-          if (tspace + len > 32767)
+          if (tspace + len > 200)
             { slen += len;
               break;
             }
@@ -628,7 +628,7 @@ void *gen_1aln(void *args)
 
       if (tlen >= tps->mlen)
         { tps->mlen  = 1.2*tlen + 250;
-          tps->trace = realloc(tps->trace,2*tps->mlen*sizeof(int16));
+          tps->trace = realloc(tps->trace,2*tps->mlen);
           trace64    = realloc(trace64,sizeof(int64)*tps->mlen);
           if (tps->trace == NULL || trace64 == NULL)
             { fprintf(stderr,"Out of memory interpreting CIGAR string");
@@ -661,7 +661,7 @@ void *gen_1aln(void *args)
           tps->trace[0] = 0;
           tps->trace[1] = 0;
           Write_Aln_Overlap(of,ovl);
-          Write_Aln_Trace(of,tps->trace,2,trace64,0);
+          Write_Aln_Trace(of,tps->trace,2,trace64,0,NODIFF);
         }
       else
       while (1)
@@ -792,9 +792,6 @@ int main(int argc, char *argv[])
           case 'T':
             ARG_POSITIVE(NTHREADS,"Number of threads")
             break;
-          case 'S':
-            ARG_POSITIVE(TSPACE,"Trace point spacing")
-            break;
           case 'N':
             NODIFF = 1;
             break;
@@ -811,7 +808,6 @@ int main(int argc, char *argv[])
         fprintf(stderr,"           <1_extn>  = any valid 1-code sequence file type\n");
         fprintf(stderr,"\n");
         fprintf(stderr,"      -T: Number of threads to use.\n");
-        fprintf(stderr,"      -S: Trace point spacing (default 100).\n");
         fprintf(stderr,"      -N: No-diff mode: omit per-window diff counts (X line).\n");
         exit (1);
       }
