@@ -563,8 +563,11 @@ void *gen_1aln(void *args)
 
       index = Hash_Lookup(AHASH, fptrs[0]);
       alen  = strtol(fptrs[1], &eptr, 10);
-      if (index < 0 || alen != SCAFF1[index].slen)
-        { fprintf(stderr,"%s: Scaffold name %s not found in first source (offset %lld)\n", 
+      // Tolerate gapped assemblies: FASTGA's GDB trims trailing Ns, so the scaffold length
+      // (slen) can be < the PAF's full sequence length. Accept alen >= slen; reject only a
+      // missing name or a PAF shorter than the GDB (a genuine wrong-source mismatch).
+      if (index < 0 || alen < SCAFF1[index].slen)
+        { fprintf(stderr,"%s: Scaffold name %s not found (or shorter than GDB) in first source (offset %lld)\n",
                          Prog_Name,fptrs[0],(int64) (ftello(input)-linelen));
           exit (1);
         }
@@ -580,8 +583,8 @@ void *gen_1aln(void *args)
 
       index = Hash_Lookup(BHASH, fptrs[5]);
       blen   = strtol(fptrs[6], &eptr, 10);
-      if (index < 0 || blen != SCAFF2[index].slen)
-        { fprintf(stderr,"%s: Scaffold name %s not found in second source (offset %lld)\n", 
+      if (index < 0 || blen < SCAFF2[index].slen)
+        { fprintf(stderr,"%s: Scaffold name %s not found (or shorter than GDB) in second source (offset %lld)\n",
                          Prog_Name,fptrs[5],(int64) (ftello(input)-linelen));
           exit (1);
         }
