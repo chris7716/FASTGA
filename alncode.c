@@ -54,6 +54,12 @@ static char *alnSchemaText =
 OneSchema *make_Aln_Schema ()
 { return (oneSchemaCreateFromText(alnSchemaText)); }
 
+static int Aln_NODIFF = 0;   // -N: write a no-diff .1aln, omitting the per-window diff (X) records
+static int Aln_TSPACE = 0;   // trace spacing of the file being read; bounds the no-diff re-align band
+
+void Set_Aln_NoDiff(int nodiff)
+{ Aln_NODIFF = nodiff; }
+
   // Open the .1aln file for reading and read the header
 
 OneFile *open_Aln_Read (char *filename, int nThreads,
@@ -120,7 +126,8 @@ OneFile *open_Aln_Read (char *filename, int nThreads,
   if (*tspace == 0)
     { EPRINTF("Did not find a t-line before first alignment or GDB skeleton");
       goto clean_up;
-    }      
+    }
+  Aln_TSPACE = *tspace;
 
   oneSchemaDestroy(schema);
   return (of);
@@ -169,6 +176,7 @@ int Read_Aln_Trace(OneFile *of, uint8 *trace, int *period)
 { int64 *trace64;
   int    tlen;
   int    j, x;
+  int    more;
   
   if (of->lineType != 'T')
     { EPRINTF("Failed to be at start of trace in Read_Aln_Trace()");
@@ -181,28 +189,37 @@ int Read_Aln_Trace(OneFile *of, uint8 *trace, int *period)
   for (x = 1; x < tlen; x += 2)
     trace[x] = trace64[j++];
 
-  oneReadLine(of);
-  if (of->lineType != 'X')
-    { EPRINTF("No X-line following a T-line in 1aln file");
-      EXIT(1);
-    }
-  if (2*oneLen(of) != tlen)
-    { EPRINTF("X-line and T-lines should have the same length");
-      EXIT(1);
-    }
-
-  trace64 = oneIntList(of);
-  j = 0;
-  for (x = 0; x < tlen; x += 2)
-    trace[x] = trace64[j++];
-
   if (period != NULL)
     *period = 0;
-  while (oneReadLine(of))       // move to start of next alignment
-    if (of->lineType == 'A')
-      break;
-    else if (of->lineType == 'U' && period != NULL)
-      *period = oneInt(of,0);
+  more = oneReadLine(of);       // line after T: X (normal), next object, or end of data
+  if (more && of->lineType == 'X')   // normal .1aln: per-window diffs follow the T line
+    { if (2*oneLen(of) != tlen)
+        { EPRINTF("X-line and T-lines should have the same length");
+          EXIT(1);
+        }
+      trace64 = oneIntList(of);
+      j = 0;
+      for (x = 0; x < tlen; x += 2)
+        trace[x] = trace64[j++];
+      while (oneReadLine(of))       // move to start of next alignment
+        if (of->lineType == 'A')
+          break;
+        else if (of->lineType == 'U' && period != NULL)
+          *period = oneInt(of,0);
+    }
+  else                          // no-diff .1aln: no X line; bound each window's diff by the spacing
+    { int b = Aln_TSPACE;
+      for (x = 1; x < tlen; x += 2)
+        if (trace[x] > b) b = trace[x];
+      if (b > 255) b = 255;
+      for (x = 0; x < tlen; x += 2)
+        trace[x] = b;
+      while (more && of->lineType != 'A')   // current line already read; move to next alignment
+        { if (of->lineType == 'U' && period != NULL)
+            *period = oneInt(of,0);
+          more = oneReadLine(of);
+        }
+    }
 
   return (tlen);
 }
@@ -293,10 +310,12 @@ void Write_Aln_Trace (OneFile *of, uint8 *trace, int tlen, int64 *trace64, int p
     trace64[j++] = trace[x];
   oneWriteLine (of,'T',j,trace64);
 
-  j = 0;
-  for (x = 0; x < tlen; x += 2)
-    trace64[j++] = trace[x];
-  oneWriteLine(of,'X',j,trace64);
+  if (!Aln_NODIFF)              // -N: omit the per-window diff (X) line entirely
+    { j = 0;
+      for (x = 0; x < tlen; x += 2)
+        trace64[j++] = trace[x];
+      oneWriteLine(of,'X',j,trace64);
+    }
 
   if (period != 0)
     { oneInt(of,0) = period;

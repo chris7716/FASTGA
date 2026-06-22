@@ -30,8 +30,10 @@
 #define TSPACE   100
 #define VERSION "0.1"
 
-static char *Usage[] = 
-            { "[-T<int(8)>] <alignments:path>[.paf]",
+static int NODIFF = 0;   // -N: write a no-diff .1aln (omit per-window diff X records)
+
+static char *Usage[] =
+            { "[-NT<int(8)>] <alignments:path>[.paf]",
               " <source1:path>[.1gdb|<fa_extn>|<1_extn>] [<source2:path>[.1gdb|<fa_extn>|<1_extn>]]"
             };
 
@@ -789,7 +791,7 @@ int main(int argc, char *argv[])
       if (argv[i][0] == '-')
         switch (argv[i][1])
         { default:
-            ARG_FLAGS("")
+            ARG_FLAGS("N")
             break;
           case 'T':
             ARG_POSITIVE(NTHREADS,"Number of threads")
@@ -799,6 +801,8 @@ int main(int argc, char *argv[])
         argv[j++] = argv[i];
     argc = j;
 
+    NODIFF = flags['N'];
+
     if (argc < 3 || argc > 4)
       { fprintf(stderr,"\nUsage: %s %s\n",Prog_Name,Usage[0]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[1]);
@@ -807,6 +811,7 @@ int main(int argc, char *argv[])
         fprintf(stderr,"           <1_extn>  = any valid 1-code sequence file type\n");
         fprintf(stderr,"\n");
         fprintf(stderr,"      -T: Number of threads to use.\n");
+        fprintf(stderr,"      -N: No-diff: omit per-window diff (X) records (smaller .1aln; -x re-derives diffs).\n");
         exit (1);
       }
 
@@ -917,6 +922,8 @@ int main(int argc, char *argv[])
                                  VERSION,Command_Line,TSPACE,SPATH1,SPATH2,cpath);
     free(cpath);
     free(SPATH1);
+
+    Set_Aln_NoDiff(NODIFF);   // -N: make Write_Aln_Trace omit the per-window diff (X) records
 
     Write_Skeleton(of,gdb1);
     if (ISTWO)

@@ -25,6 +25,7 @@ OneFile *open_Aln_Read (char *filename, int nThreads,
 // next three routines read the records from the file
 
 int  Read_Aln_Overlap(OneFile *of, Overlap *ovl);
+void Set_Aln_NoDiff  (int nodiff);   // if set, Write_Aln_Trace omits the X (per-window diff) records
 int  Read_Aln_Trace  (OneFile *of, uint8 *trace, int *period);
 int  Skip_Aln_Trace  (OneFile *of);
 int  Copy_Aln_Trace  (OneFile *in, OneFile *out);
