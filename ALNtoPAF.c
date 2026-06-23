@@ -728,6 +728,23 @@ int main(int argc, char *argv[])
     free(root);
     free(pwd);
 
+    { OneInfo *ai = input->info[(int)'A'];
+      fprintf(stderr,"DEBUG A: given.count=%lld given.max=%lld index=%s\n",
+              ai ? ai->given.count : -1LL,
+              ai ? ai->given.max  : -1LL,
+              ai && ai->index ? "non-null" : "NULL");
+      if (ai && ai->index)
+        { fprintf(stderr,"DEBUG A: index[0]=%lld", ai->index[0]);
+          if (ai->given.count >= 1) fprintf(stderr," index[1]=%lld", ai->index[1]);
+          if (ai->given.count >= 2) fprintf(stderr," index[2]=%lld", ai->index[2]);
+          fprintf(stderr,"\n");
+        }
+      OneInfo *ti = input->info[(int)'T'];
+      fprintf(stderr,"DEBUG T: given.count=%lld given.max=%lld\n",
+              ti ? ti->given.count : -1LL,
+              ti ? ti->given.max  : -1LL);
+    }
+
     ISTWO = (src2_name != NULL);
     
     units1 = units2 = NULL;
