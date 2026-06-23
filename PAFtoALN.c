@@ -165,7 +165,7 @@ static void cigarPrefix(Cigar_Position *C)
       { case 5:
         case 4:
         case 3:
-          if (apos >= 0 && bpos > 0)
+          if (apos >= 0 && bpos >= 0)
             goto found;
           if (apos < 0 && apos + len >= 0)
             { len  += apos;
