@@ -171,14 +171,14 @@ static void cigarPrefix(Cigar_Position *C)
             { len  += apos;
               bpos -= apos;
               apos = 0;
-              if (bpos >= 0)
+              if (bpos >= 0 && len > 0)   // len==0: op fully in gap, skip it (don't park cursor on a 0-length op)
                 goto found;
             }
           if (bpos < 0 && bpos + len >= 0)
             { len  += bpos;
               apos -= bpos;
               bpos = 0;
-              if (apos >= 0)
+              if (apos >= 0 && len > 0)   // len==0: op fully in gap, skip it (don't park cursor on a 0-length op)
                 goto found;
             }
           apos += len;

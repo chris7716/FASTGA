@@ -173,6 +173,12 @@ void *gen_paf(void *args)
       path->tlen  = Read_Aln_Trace(in,(uint8 *) trace,NULL);
       path->trace = trace;
 
+      // Skip zero-span records. PAFtoALN's contig split for gapped assemblies
+      // can emit an empty piece (abpos==aepos && bbpos==bepos) whose B coordinate
+      // lands past the N-trimmed contig end; it carries no alignment.
+      if (path->abpos == path->aepos && path->bbpos == path->bepos)
+        continue;
+
       acontig = ovl->aread;
       aln->alen = contigs1[acontig].clen;
       bcontig = ovl->bread;
