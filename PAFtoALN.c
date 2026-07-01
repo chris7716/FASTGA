@@ -716,13 +716,13 @@ void *gen_1aln(void *args)
                 { C->bpos -= CONTIG2[ovl->bread].sbeg+CONTIG2[ovl->bread].clen;
                   ovl->bread -= 1;
                   C->bpos += CONTIG2[ovl->bread].sbeg+CONTIG2[ovl->bread].clen;
-                  bend = CONTIG1[ovl->bread].clen;
+                  bend = CONTIG2[ovl->bread].clen;
                 }
               else
                 { C->bpos += CONTIG2[ovl->bread].sbeg;
                   ovl->bread += 1;
                   C->bpos -= CONTIG2[ovl->bread].sbeg;
-                  bend = CONTIG1[ovl->bread].clen;
+                  bend = CONTIG2[ovl->bread].clen;
                 }
             }
 
