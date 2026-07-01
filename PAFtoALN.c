@@ -735,6 +735,32 @@ void *gen_1aln(void *args)
           adel += C->apos;
           bdel += C->bpos;
 
+          // cigarPrefix may have advanced positions past a contig boundary while
+          // skipping a wide N-gap (e.g. many deletions consume A-positions during
+          // a B-gap skip). Re-advance both sides and re-check the terminal condition.
+          while (C->apos >= aend && ovl->aread+1 < aectg)
+            { C->apos += CONTIG1[ovl->aread].sbeg;
+              ovl->aread += 1;
+              C->apos -= CONTIG1[ovl->aread].sbeg;
+              aend = CONTIG1[ovl->aread].clen;
+            }
+          while (C->bpos >= bend && (comp ? ovl->bread-1 >= bfctg : ovl->bread+1 < bectg))
+            { if (comp)
+                { C->bpos -= CONTIG2[ovl->bread].sbeg+CONTIG2[ovl->bread].clen;
+                  ovl->bread -= 1;
+                  C->bpos += CONTIG2[ovl->bread].sbeg+CONTIG2[ovl->bread].clen;
+                  bend = CONTIG2[ovl->bread].clen;
+                }
+              else
+                { C->bpos += CONTIG2[ovl->bread].sbeg;
+                  ovl->bread += 1;
+                  C->bpos -= CONTIG2[ovl->bread].sbeg;
+                  bend = CONTIG2[ovl->bread].clen;
+                }
+            }
+          if (C->apos >= aend || C->bpos >= bend)
+            break;
+
 #ifdef DEBUG
           printf("Internal skip: %d %d",adel,bdel);
           printf(" %d %.7s\n",C->len,C->cptr);
