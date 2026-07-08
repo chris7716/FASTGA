@@ -6217,6 +6217,11 @@ int Compute_Trace_PTS(Alignment *align, Work_Data *ework, int trace_spacing,
       }
     if (tlen <= 1)
       nmax = N;
+    //  Stored per-window diffs can understate a window's edit distance and trip
+    //  the dmax check below; a window's distance is bounded by A-span
+    //  (<=trace_spacing) + B-span (<=nmax), so use that safe bound.
+    if (dmax < trace_spacing + nmax)
+      dmax = trace_spacing + nmax;
     if (dmax & 0x1)
       dmax += 1;
 
@@ -6356,6 +6361,11 @@ int Compute_Trace_MID(Alignment *align, Work_Data *ework, int trace_spacing,
       }
     if (tlen <= 1)
       nmax = N;
+    //  Stored per-window diffs can understate a window's edit distance and trip
+    //  the dmax check below; a window's distance is bounded by A-span
+    //  (<=trace_spacing) + B-span (<=nmax), so use that safe bound.
+    if (dmax < trace_spacing + nmax)
+      dmax = trace_spacing + nmax;
     if (dmax & 0x1)
       dmax += 1;
 

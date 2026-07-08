@@ -282,8 +282,10 @@ void *gen_paf(void *args)
           else
             aln->bseq = bact - bmin; 
 
-          if (path->diffs == 0)        // pure-match alignment (single (0,0) tracepoint)
-            path->tlen = 0;            // skip realignment; the CIGAR loop emits one match block
+          if (path->diffs == 0                 // pure-match, or a zero-span segment (a long
+              || path->bbpos == path->bepos    // indel PAFtoALN split off): no realignment,
+              || path->abpos == path->aepos)   // the pure-indel CIGAR is emitted below
+            path->tlen = 0;
           else
             { Compute_Trace_PTS(aln,work,TSPACE,GREEDIEST,1,-1);
               if (path->tlen > 0)      // empty computed trace -> nothing to improve
@@ -293,7 +295,13 @@ void *gen_paf(void *args)
           cig->n = 0;
           del = 0;
 
-          if (CIGAR_M && !DIFFS)
+          if (path->bbpos == path->bepos)          // zero target span: pure query insertion
+            cigar_push(cig,'I',path->aepos - path->abpos);
+          else if (path->abpos == path->aepos)     // zero query span: pure target deletion
+            { cigar_push(cig,'D',path->bepos - path->bbpos);
+              del += path->bepos - path->bbpos;
+            }
+          else if (CIGAR_M && !DIFFS)
             { int    k, h, p, x, blen;
               int32 *t = (int32 *) path->trace;
               int    T = path->tlen;
