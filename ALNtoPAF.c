@@ -173,11 +173,11 @@ void *gen_paf(void *args)
       path->tlen  = Read_Aln_Trace(in,(uint8 *) trace,NULL);
       path->trace = trace;
 
-      // Skip zero-span or out-of-bounds records from gapped-assembly contig splits.
-      // PAFtoALN can emit pieces where one span is zero or the B start lands before
-      // the contig (negative), e.g. when a B-side gap covers the entire window.
-      if (path->abpos == path->aepos || path->bbpos == path->bepos ||
-          path->abpos < 0 || path->bbpos < 0)
+      // Skip only genuinely invalid records (a negative start means PAFtoALN's contig
+      // split landed entirely outside the contig). A zero-span piece is NOT skipped here:
+      // it's a legitimate terminal indel split off at a contig/N-gap boundary, and is
+      // emitted below as a pure I/D CIGAR instead of being discarded.
+      if (path->abpos < 0 || path->bbpos < 0)
         continue;
 
       acontig = ovl->aread;
@@ -274,13 +274,18 @@ void *gen_paf(void *args)
               bmax = path->bepos;
             }
 
-          bact = Get_Contig_Piece(gdb2,bcontig,bmin,bmax,NUMERIC,bseq);
-          if (COMP(aln->flags))
-            { Complement_Seq(bact,bmax-bmin);
-              aln->bseq = bact - (aln->blen-bmax);
+          if (bmin < bmax)
+            { bact = Get_Contig_Piece(gdb2,bcontig,bmin,bmax,NUMERIC,bseq);
+              if (COMP(aln->flags))
+                { Complement_Seq(bact,bmax-bmin);
+                  aln->bseq = bact - (aln->blen-bmax);
+                }
+              else
+                aln->bseq = bact - bmin;
             }
           else
-            aln->bseq = bact - bmin; 
+            aln->bseq = NULL;   // zero target span (pure insertion): no B-side subrange to fetch
+                                 // (Get_Contig_Piece's length math underflows on beg==end)
 
           if (path->diffs == 0                 // pure-match, or a zero-span segment (a long
               || path->bbpos == path->bepos    // indel PAFtoALN split off): no realignment,
