@@ -173,11 +173,13 @@ void *gen_paf(void *args)
       path->tlen  = Read_Aln_Trace(in,(uint8 *) trace,NULL);
       path->trace = trace;
 
-      // Skip only genuinely invalid records (a negative start means PAFtoALN's contig
-      // split landed entirely outside the contig). A zero-span piece is NOT skipped here:
+      // Skip only genuinely invalid/empty records: a negative start means PAFtoALN's
+      // contig split landed entirely outside the contig, and BOTH spans zero means the
+      // piece carries no alignment at all. A single side at zero is NOT skipped here:
       // it's a legitimate terminal indel split off at a contig/N-gap boundary, and is
       // emitted below as a pure I/D CIGAR instead of being discarded.
-      if (path->abpos < 0 || path->bbpos < 0)
+      if (path->abpos < 0 || path->bbpos < 0 ||
+          (path->abpos == path->aepos && path->bbpos == path->bepos))
         continue;
 
       acontig = ovl->aread;

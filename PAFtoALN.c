@@ -161,12 +161,19 @@ static void cigarPrefix(Cigar_Position *C)
           if (len == 0)
             len = 1;
         }
+
+      // Stop before consuming ANY op (indel or diagonal) once both positions are already
+      // back in bounds. Previously this check only ran inside the diagonal cases below, so
+      // a CIGAR that starts (or resumes, after a gap) with an indel while already in-bounds -
+      // a genuine biological insertion/deletion, not a gap artifact - had that indel silently
+      // consumed and its content lost instead of being left for the caller to record as a piece.
+      if (apos >= 0 && bpos >= 0)
+        goto found;
+
       switch (interp[(int) (*c)])
       { case 5:
         case 4:
         case 3:
-          if (apos >= 0 && bpos >= 0)
-            goto found;
           if (apos < 0 && apos + len >= 0)
             { len  += apos;
               bpos -= apos;
@@ -694,13 +701,39 @@ void *gen_1aln(void *args)
 
           adel = bdel = 0;
           if (interp[(int) (*C->cptr)] == 1)
-            { adel += C->len;
+            { // cigar2tp left this op unconsumed with C->apos/C->bpos still both short of
+              // aend/bend: it stopped here because a single insertion >~100bp can't fit one
+              // tracepoint window (TSPACE+len>200), NOT because of a contig/N-gap boundary.
+              // Record it as its own pure-insertion piece instead of silently discarding it;
+              // ALNtoPAF's zero-target-span guard (bbpos==bepos) reconstructs it as pure 'I'.
+              if (C->apos < aend && C->bpos < bend)
+                { ovl->path.abpos = C->apos;
+                  ovl->path.aepos = C->apos + C->len;
+                  ovl->path.bbpos = ovl->path.bepos = C->bpos;
+                  ovl->path.diffs = 0;
+                  tps->trace[0] = 0;
+                  tps->trace[1] = 0;
+                  Write_Aln_Overlap(of,ovl);
+                  Write_Aln_Trace(of,tps->trace,2,trace64,0);
+                }
+              adel += C->len;
               C->apos += C->len;
               C->cptr += 1;
               C->len   = 0;
             }
           else if (interp[(int) (*C->cptr)] == 2)
-            { bdel += C->len;
+            { // same reasoning as above, for an oversized deletion (target-only advance).
+              if (C->apos < aend && C->bpos < bend)
+                { ovl->path.bbpos = C->bpos;
+                  ovl->path.bepos = C->bpos + C->len;
+                  ovl->path.abpos = ovl->path.aepos = C->apos;
+                  ovl->path.diffs = 0;
+                  tps->trace[0] = 0;
+                  tps->trace[1] = 0;
+                  Write_Aln_Overlap(of,ovl);
+                  Write_Aln_Trace(of,tps->trace,2,trace64,0);
+                }
+              bdel += C->len;
               C->bpos += C->len;
               C->cptr += 1;
               C->len   = 0;
