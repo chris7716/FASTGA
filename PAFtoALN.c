@@ -701,14 +701,19 @@ void *gen_1aln(void *args)
 
           adel = bdel = 0;
           if (interp[(int) (*C->cptr)] == 1)
-            { // cigar2tp left this op unconsumed with C->apos/C->bpos still both short of
-              // aend/bend: it stopped here because a single insertion >~100bp can't fit one
-              // tracepoint window (TSPACE+len>200), NOT because of a contig/N-gap boundary.
-              // Record it as its own pure-insertion piece instead of silently discarding it;
-              // ALNtoPAF's zero-target-span guard (bbpos==bepos) reconstructs it as pure 'I'.
-              if (C->apos < aend && C->bpos < bend)
+            { // cigar2tp left this op unconsumed because a single insertion can't fit
+              // one tracepoint window (TSPACE+len>200) -- but if this op ALSO straddles
+              // the current contig's end, cigar2tp folds the boundary spillover into the
+              // same C->len, so C->len can exceed what's actually left inside [C->apos,aend).
+              // Clip what we record/advance to that in-bounds amount; any remainder stays
+              // attached to this op (cptr untouched) to be picked up fresh after the
+              // boundary-walk below crosses into the next contig.
+              int piece = C->len;
+              if (C->apos < aend && piece > aend - C->apos)
+                piece = aend - C->apos;
+              if (piece > 0 && C->apos < aend && C->bpos < bend)
                 { ovl->path.abpos = C->apos;
-                  ovl->path.aepos = C->apos + C->len;
+                  ovl->path.aepos = C->apos + piece;
                   ovl->path.bbpos = ovl->path.bepos = C->bpos;
                   ovl->path.diffs = 0;
                   tps->trace[0] = 0;
@@ -716,16 +721,26 @@ void *gen_1aln(void *args)
                   Write_Aln_Overlap(of,ovl);
                   Write_Aln_Trace(of,tps->trace,2,trace64,0);
                 }
-              adel += C->len;
-              C->apos += C->len;
-              C->cptr += 1;
-              C->len   = 0;
+              else
+                piece = C->len;   // already at/past a boundary: nothing to clip, pure skip
+              adel += piece;
+              C->apos += piece;
+              C->len  -= piece;
+              if (C->len <= 0)
+                { C->cptr += 1;
+                  C->len   = 0;
+                }
             }
           else if (interp[(int) (*C->cptr)] == 2)
-            { // same reasoning as above, for an oversized deletion (target-only advance).
-              if (C->apos < aend && C->bpos < bend)
+            { // same reasoning as above, for an oversized deletion (target-only advance):
+              // clip to what's still inside the current contig, leave the remainder on
+              // this op for after the boundary-walk crosses into the next contig.
+              int piece = C->len;
+              if (C->bpos < bend && piece > bend - C->bpos)
+                piece = bend - C->bpos;
+              if (piece > 0 && C->apos < aend && C->bpos < bend)
                 { ovl->path.bbpos = C->bpos;
-                  ovl->path.bepos = C->bpos + C->len;
+                  ovl->path.bepos = C->bpos + piece;
                   ovl->path.abpos = ovl->path.aepos = C->apos;
                   ovl->path.diffs = 0;
                   tps->trace[0] = 0;
@@ -733,10 +748,15 @@ void *gen_1aln(void *args)
                   Write_Aln_Overlap(of,ovl);
                   Write_Aln_Trace(of,tps->trace,2,trace64,0);
                 }
-              bdel += C->len;
-              C->bpos += C->len;
-              C->cptr += 1;
-              C->len   = 0;
+              else
+                piece = C->len;   // already at/past a boundary: nothing to clip, pure skip
+              bdel += piece;
+              C->bpos += piece;
+              C->len  -= piece;
+              if (C->len <= 0)
+                { C->cptr += 1;
+                  C->len   = 0;
+                }
             }
           while (C->apos >= aend && ovl->aread+1 < aectg)
             { C->apos += CONTIG1[ovl->aread].sbeg;
